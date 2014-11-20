@@ -9,24 +9,31 @@ import _lob
 import gzip
 import logging
 import os
-import pandas
-import sys
+import pandas as pd
+#import sys
 import time
 
-usage = \
-"""
-Usage: %s <firm name> <output directory> <input file names>
-""" % sys.argv[0]
+
+pd.set_option('display.notebook_repr_html',False)
+pd.set_option('display.max_rows',10)
+pd.set_option('display.max_columns',6)
+pd.set_option('display.width', 120)
+
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        print usage
-        sys.exit(0)
-    else:
-        firm_name, output_dir = sys.argv[1:3]
-        file_name_list = sys.argv[3:]
-        
-    start = time.time()
+    
+    from optparse import OptionParser
+
+    usage = "Usage: %prog <ticker> <output directory> <input file names>"
+    parser = OptionParser(usage)
+    parser.add_option("-v", "--verbose", dest = "verbose", action = "store_true", 
+                        default = False, help = "showing detailed info")
+    
+    (options, args) = parser.parse_args()
+
+    args = ['EXAMPLE','./output/', 'EXAMPLE-orders-sameday.csv']
+    firm_name, output_dir = args[:2]
+    file_name_list = args[2:]
 
     # Suppress log generation when not in debug mode:
     DEBUG = True
@@ -61,6 +68,9 @@ if __name__ == '__main__':
     # Process all available files; assumes that the files are named in
     # a way such that their sort order corresponds to the
     # chronological order of their respective contents:    
+        
+    start = time.time()
+
     for file_name in sorted(file_name_list):
 
         # Check whether input file is compressed:
@@ -72,7 +82,7 @@ if __name__ == '__main__':
             else:
                 compression = 'gzip'
 
-        tp = pandas.read_csv(file_name,
+        tp = pd.read_csv(file_name,
                              names=_lob.col_names,
                              iterator=True,
                              compression=compression)
@@ -85,7 +95,8 @@ if __name__ == '__main__':
                 # Process orders that occurred before a certain cutoff time:
                 #if data.irow(0)['trans_time'] > '09:25:00.000000':
                 #    break        
-                lob.process(data)
+                for row in data.iterrows():
+                    lob.process(row)
 
     lob.record_daily_stats(lob.day)
     lob.print_daily_stats()
